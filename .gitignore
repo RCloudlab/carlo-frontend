@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Build output — Vercel construye desde el source, nunca commitear dist
+dist/
+
+# Variables de entorno — NUNCA commitear valores reales
+.env
+.env.local
+.env.*.local
+
+# Caché de herramientas
+.vite/
+*.tsbuildinfo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

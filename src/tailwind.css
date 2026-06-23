@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* ============================================================
+   CARLO — Sistema de diseño Carlo Acutis
+   Paleta: azul marino (hoodie) · dorado eucarístico (monstrancias) · rojo polo
+   ============================================================ */
+
+@theme {
+  /* ── Azul marino — el hoodie de Carlo ── */
+  --color-primary:        #1A3A6B;
+  --color-primary-light:  #2452A0;
+  --color-primary-muted:  #3B5998;
+  --color-primary-pale:   #E8EEF8;
+  --color-midnight:       #0F1B3D;  /* sidebar del coordinador */
+
+  /* ── Dorado eucarístico — las monstrancias ── */
+  --color-accent:         #C9942A;
+  --color-accent-light:   #E8B84B;
+  --color-accent-pale:    #FDF5E0;
+  --color-accent-bright:  #F4C842;  /* estado "Certificado" */
+
+  /* ── Rojo polo — la foto icónica ── */
+  --color-error:          #C0271E;
+  --color-error-light:    #E03228;
+  --color-error-bg:       #FDECEA;
+
+  /* ── Feedback de escaneo (overlays) ── */
+  --color-overlay-success: rgba(26,58,107,0.94);   /* azul marino */
+  --color-overlay-warning: rgba(180,126,20,0.94);  /* dorado oscuro */
+  --color-overlay-error:   rgba(192,39,30,0.94);   /* rojo polo */
+
+  /* ── Neutros con tinte azul ── */
+  --color-neutral-50:   #F8F9FC;
+  --color-neutral-100:  #F1F3F8;
+  --color-neutral-200:  #E2E6EF;
+  --color-neutral-400:  #8E97AE;
+  --color-neutral-600:  #4A5568;
+  --color-neutral-700:  #3D4A5C;
+  --color-neutral-800:  #1A2338;
+  --color-neutral-900:  #0F1623;
+
+  /* ── Superficie ── */
+  --color-surface:    #FFFFFF;
+
+  /* ── Offline ── */
+  --color-offline:    #6B7280;
+  --color-offline-bg: #F1F3F8;
+
+  /* ── Calendario semántico ── */
+  --color-cal-present: #1A3A6B;  /* azul marino */
+  --color-cal-absent:  #C0271E;  /* rojo polo */
+  --color-cal-neutral: #E2E6EF;
+
+  /* ── Tipografía ── */
+  --font-display: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif";
+  --font-sans:    "'Inter', system-ui, -apple-system, sans-serif";
+
+  /* ── Áreas táctiles mínimas (WCAG 2.1 — 44×44px) ── */
+  --spacing-touch: 2.75rem;  /* 44px */
+
+  /* ── Viewfinder del escáner ── */
+  --spacing-viewfinder: 17.5rem;  /* 280px */
+}
