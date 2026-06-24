@@ -2,7 +2,11 @@ import { api } from './api'
 import { useAuthStore } from '../store/auth.store'
 
 export async function login(email: string, password: string): Promise<void> {
+  // Limpiar estado de sesión anterior antes de autenticar con nueva cuenta
+  useAuthStore.getState().clearAuth()
+
   // El backend responde con access_token en body y refresh_token como httpOnly cookie
+  // El backend también invalida cualquier cookie previa en /login
   const { data: tokenData } = await api.post<{ access_token: string }>('/auth/login', {
     email,
     password,
@@ -32,6 +36,8 @@ export async function tryRestoreSession(): Promise<boolean> {
     useAuthStore.getState().setAuth(user, tokenData.access_token)
     return true
   } catch {
+    // Cookie inválida o expirada — limpiar cualquier estado residual
+    useAuthStore.getState().clearAuth()
     return false
   }
 }

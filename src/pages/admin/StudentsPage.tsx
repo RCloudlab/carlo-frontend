@@ -6,6 +6,7 @@ import {
   updateStudent,
   deactivateStudent,
   downloadStudentQr,
+  downloadStudentQrBatch,
   type Student,
   type StudentCreate,
 } from '../../services/students.service'
@@ -41,7 +42,11 @@ export default function StudentsPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [downloadingBatch, setDownloadingBatch] = useState(false)
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const allSelected = students.length > 0 && students.every((s) => selected.has(s.id))
 
   const load = (p = page) => {
     setLoading(true)
@@ -62,15 +67,28 @@ export default function StudentsPage() {
     listPrograms(true).then((res) => setPrograms(res.items)).catch(() => {})
   }, [])
 
-  // Reset page when filters change
   useEffect(() => {
     setPage(1)
+    setSelected(new Set())
     load(1)
   }, [filterProgram, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    setSelected(new Set())
     load(page)
   }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(students.map((s) => s.id)))
+  }
 
   const openCreate = () => {
     setEditing(null)
@@ -123,6 +141,7 @@ export default function StudentsPage() {
     if (!window.confirm(`¿Desactivar a "${s.full_name}"? El historial se conserva.`)) return
     try {
       await deactivateStudent(s.id)
+      setSelected((prev) => { const n = new Set(prev); n.delete(s.id); return n })
       load(page)
     } catch {
       alert('Error al desactivar alumno')
@@ -130,11 +149,16 @@ export default function StudentsPage() {
   }
 
   const handleDownloadQr = async (s: Student) => {
-    try {
-      await downloadStudentQr(s.id, s.full_name)
-    } catch {
-      alert('Error al descargar QR')
-    }
+    try { await downloadStudentQr(s.id, s.full_name) }
+    catch { alert('Error al descargar QR') }
+  }
+
+  const handleDownloadBatch = async () => {
+    if (selected.size === 0) return
+    setDownloadingBatch(true)
+    try { await downloadStudentQrBatch(Array.from(selected)) }
+    catch { alert('Error al descargar QRs') }
+    finally { setDownloadingBatch(false) }
   }
 
   const fieldCls = "w-full rounded-2xl px-4 py-2.5 text-sm outline-none"
@@ -175,11 +199,35 @@ export default function StudentsPage() {
             style={{ height: 42, border: '2px solid #E2E6EF', background: '#FFFFFF', color: '#1A2338', minWidth: 160 }}
           />
           {total > 0 && (
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full ml-auto" style={{ background: '#E8EEF8', color: '#1A3A6B' }}>
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: '#E8EEF8', color: '#1A3A6B' }}>
               {total} alumno{total !== 1 ? 's' : ''}
             </span>
           )}
         </div>
+
+        {/* Barra de acciones de selección */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl" style={{ background: '#E8EEF8', border: '1px solid #C5D3EA' }}>
+            <span className="text-sm font-bold" style={{ color: '#1A3A6B' }}>
+              {selected.size} alumno{selected.size !== 1 ? 's' : ''} seleccionado{selected.size !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={handleDownloadBatch}
+              disabled={downloadingBatch}
+              className="text-sm font-bold px-4 py-1.5 rounded-xl text-white"
+              style={{ background: 'linear-gradient(135deg, #C9942A, #E0A830)', border: 'none', opacity: downloadingBatch ? 0.6 : 1 }}
+            >
+              {downloadingBatch ? 'Descargando…' : `Descargar QR${selected.size > 1 ? 's' : ''}`}
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs font-bold px-3 py-1.5 rounded-xl"
+              style={{ background: '#FFFFFF', color: '#8E97AE', border: '1px solid #E2E6EF' }}
+            >
+              Limpiar
+            </button>
+          </div>
+        )}
 
         {loading && <div className="text-center py-12" style={{ color: '#8E97AE' }}>Cargando…</div>}
         {error && <div className="rounded-2xl p-4 text-sm font-semibold" style={{ background: '#FDECEA', color: '#C0271E' }}>{error}</div>}
@@ -192,49 +240,116 @@ export default function StudentsPage() {
         )}
 
         {!loading && !error && students.length > 0 && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
-            <table className="min-w-full text-sm">
-              <thead style={{ background: '#F8F9FC', borderBottom: '1px solid #E2E6EF' }}>
-                <tr>
-                  <th className="px-5 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Nombre</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Tutor</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Teléfono</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((s, i) => (
-                  <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid #E2E6EF' : 'none' }}>
-                    <td className="px-5 py-3 font-semibold" style={{ color: '#1A2338' }}>{s.full_name}</td>
-                    <td className="px-4 py-3" style={{ color: '#4A5568' }}>{s.guardian_name ?? '—'}</td>
-                    <td className="px-4 py-3" style={{ color: '#4A5568' }}>{s.guardian_phone ?? '—'}</td>
-                    <td className="px-4 py-3 text-right" style={{ whiteSpace: 'nowrap' }}>
-                      <button onClick={() => navigate(`/admin/students/${s.id}`)}
-                        className="text-xs font-bold px-3 py-1.5 rounded-xl mr-1"
-                        style={{ background: '#E8EEF8', color: '#1A3A6B', border: 'none' }}>
-                        Perfil
-                      </button>
-                      <button onClick={() => handleDownloadQr(s)}
-                        className="text-xs font-bold px-3 py-1.5 rounded-xl mr-1"
-                        style={{ background: '#FDF5E0', color: '#C9942A', border: 'none' }}>
-                        QR
-                      </button>
-                      <button onClick={() => openEdit(s)}
-                        className="text-xs font-bold px-3 py-1.5 rounded-xl mr-1"
-                        style={{ background: '#E8EEF8', color: '#2452A0', border: 'none' }}>
-                        Editar
-                      </button>
-                      <button onClick={() => handleDeactivate(s)}
-                        className="text-xs font-bold px-3 py-1.5 rounded-xl"
-                        style={{ background: '#FDECEA', color: '#C0271E', border: 'none' }}>
-                        Desactivar
-                      </button>
-                    </td>
+          <>
+            {/* Tabla — md+ */}
+            <div className="hidden md:block rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
+              <table className="min-w-full text-sm">
+                <thead style={{ background: '#F8F9FC', borderBottom: '1px solid #E2E6EF' }}>
+                  <tr>
+                    <th className="px-4 py-3 w-10">
+                      <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                        className="w-4 h-4 rounded cursor-pointer" style={{ accentColor: '#2452A0' }} />
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Nombre</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Tutor</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Teléfono</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {students.map((s, i) => (
+                    <tr key={s.id}
+                      style={{
+                        borderTop: i > 0 ? '1px solid #E2E6EF' : 'none',
+                        background: selected.has(s.id) ? 'rgba(36,82,160,0.04)' : '#FFFFFF',
+                      }}>
+                      <td className="px-4 py-3 w-10">
+                        <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)}
+                          className="w-4 h-4 rounded cursor-pointer" style={{ accentColor: '#2452A0' }} />
+                      </td>
+                      <td className="px-3 py-3 font-semibold" style={{ color: '#1A2338' }}>{s.full_name}</td>
+                      <td className="px-4 py-3" style={{ color: '#4A5568' }}>{s.guardian_name ?? '—'}</td>
+                      <td className="px-4 py-3" style={{ color: '#4A5568' }}>{s.guardian_phone ?? '—'}</td>
+                      <td className="px-4 py-3 text-right" style={{ whiteSpace: 'nowrap' }}>
+                        <button onClick={() => navigate(`/admin/students/${s.id}`)}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl mr-1"
+                          style={{ background: '#E8EEF8', color: '#1A3A6B', border: 'none' }}>
+                          Perfil
+                        </button>
+                        <button onClick={() => handleDownloadQr(s)}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl mr-1"
+                          style={{ background: '#FDF5E0', color: '#C9942A', border: 'none' }}>
+                          QR
+                        </button>
+                        <button onClick={() => openEdit(s)}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl mr-1"
+                          style={{ background: '#E8EEF8', color: '#2452A0', border: 'none' }}>
+                          Editar
+                        </button>
+                        <button onClick={() => handleDeactivate(s)}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                          style={{ background: '#FDECEA', color: '#C0271E', border: 'none' }}>
+                          Desactivar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Tarjetas — mobile */}
+            <div className="md:hidden space-y-3">
+              {students.map((s) => (
+                <div key={s.id} className="rounded-2xl p-4"
+                  style={{
+                    background: selected.has(s.id) ? 'rgba(36,82,160,0.04)' : '#FFFFFF',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+                    border: selected.has(s.id) ? '1px solid #C5D3EA' : '1px solid #E2E6EF',
+                  }}>
+                  <div className="flex items-start gap-3 mb-1">
+                    <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)}
+                      className="w-4 h-4 rounded mt-1 cursor-pointer shrink-0" style={{ accentColor: '#2452A0' }} />
+                    <div className="flex-1">
+                      <p className="font-bold text-base" style={{ color: '#1A2338' }}>{s.full_name}</p>
+                      {s.guardian_name && (
+                        <p className="text-sm mt-0.5" style={{ color: '#4A5568' }}>
+                          <span style={{ color: '#8E97AE' }}>Tutor: </span>{s.guardian_name}
+                        </p>
+                      )}
+                      {s.guardian_phone && (
+                        <p className="text-sm" style={{ color: '#4A5568' }}>
+                          <span style={{ color: '#8E97AE' }}>Tel: </span>{s.guardian_phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3 pl-7">
+                    <button onClick={() => navigate(`/admin/students/${s.id}`)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                      style={{ background: '#E8EEF8', color: '#1A3A6B', border: 'none' }}>
+                      Perfil
+                    </button>
+                    <button onClick={() => handleDownloadQr(s)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                      style={{ background: '#FDF5E0', color: '#C9942A', border: 'none' }}>
+                      QR
+                    </button>
+                    <button onClick={() => openEdit(s)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                      style={{ background: '#E8EEF8', color: '#2452A0', border: 'none' }}>
+                      Editar
+                    </button>
+                    <button onClick={() => handleDeactivate(s)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                      style={{ background: '#FDECEA', color: '#C0271E', border: 'none' }}>
+                      Desactivar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Paginación */}
@@ -244,12 +359,7 @@ export default function StudentsPage() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="text-xs font-bold px-4 py-2 rounded-xl"
-              style={{
-                border: '2px solid #E2E6EF',
-                background: '#FFFFFF',
-                color: page === 1 ? '#C5CCDA' : '#1A3A6B',
-                cursor: page === 1 ? 'default' : 'pointer',
-              }}
+              style={{ border: '2px solid #E2E6EF', background: '#FFFFFF', color: page === 1 ? '#C5CCDA' : '#1A3A6B', cursor: page === 1 ? 'default' : 'pointer' }}
             >
               ← Anterior
             </button>
@@ -260,12 +370,7 @@ export default function StudentsPage() {
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="text-xs font-bold px-4 py-2 rounded-xl"
-              style={{
-                border: '2px solid #E2E6EF',
-                background: '#FFFFFF',
-                color: page === totalPages ? '#C5CCDA' : '#1A3A6B',
-                cursor: page === totalPages ? 'default' : 'pointer',
-              }}
+              style={{ border: '2px solid #E2E6EF', background: '#FFFFFF', color: page === totalPages ? '#C5CCDA' : '#1A3A6B', cursor: page === totalPages ? 'default' : 'pointer' }}
             >
               Siguiente →
             </button>

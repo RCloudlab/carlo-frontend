@@ -95,7 +95,9 @@ export default function CatequistasPage() {
         {!loading && !error && catequistas.length > 0 && (
           <>
             <p className="text-xs font-bold mb-3" style={{ color: '#8E97AE' }}>{total} catequista{total !== 1 ? 's' : ''}</p>
-            <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
+
+            {/* Tabla — solo en md+ */}
+            <div className="hidden md:block rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
               <table className="min-w-full text-sm">
                 <thead style={{ background: '#F8F9FC', borderBottom: '1px solid #E2E6EF' }}>
                   <tr>
@@ -129,6 +131,29 @@ export default function CatequistasPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Tarjetas — solo en mobile */}
+            <div className="md:hidden space-y-3">
+              {catequistas.map((c) => (
+                <div key={c.id} className="rounded-2xl p-4" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="font-bold text-base" style={{ color: '#1A2338' }}>{c.full_name}</p>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold shrink-0"
+                      style={c.is_active ? { background: '#E8EEF8', color: '#1A3A6B' } : { background: '#F1F3F8', color: '#8E97AE' }}>
+                      {c.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <p className="text-sm mb-3" style={{ color: '#4A5568' }}>{c.email}</p>
+                  {c.is_active && (
+                    <button onClick={() => handleDeactivate(c)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                      style={{ background: '#FDECEA', color: '#C0271E', border: 'none' }}>
+                      Desactivar
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </>
         )}

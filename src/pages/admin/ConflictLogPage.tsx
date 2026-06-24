@@ -16,6 +16,17 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function ConflictBadge({ type }: { type: string }) {
+  const s = type === 'duplicate_day'
+    ? { background: '#FDF5E0', color: '#C9942A' }
+    : { background: '#FDECEA', color: '#C0271E' }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold" style={s}>
+      {LABELS[type] ?? type}
+    </span>
+  )
+}
+
 export default function ConflictLogPage() {
   const [conflictType, setConflictType] = useState('')
   const [page, setPage] = useState(1)
@@ -41,49 +52,25 @@ export default function ConflictLogPage() {
       <div className="max-w-5xl mx-auto">
 
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-extrabold" style={{ color: '#1A2338', letterSpacing: '-0.01em' }}>
-            Log de conflictos
-          </h1>
+          <h1 className="text-2xl font-extrabold" style={{ color: '#1A2338', letterSpacing: '-0.01em' }}>Log de conflictos</h1>
           {data && (
-            <span
-              className="text-xs font-bold px-3 py-1.5 rounded-full"
-              style={{ background: '#FDECEA', color: '#C0271E' }}
-            >
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: '#FDECEA', color: '#C0271E' }}>
               {data.total} conflicto{data.total !== 1 ? 's' : ''}
             </span>
           )}
         </div>
 
-        {/* Filtro */}
         <div className="flex items-center gap-3 mb-5">
           <label className="text-sm font-bold" style={{ color: '#4A5568' }}>Tipo:</label>
-          <select
-            value={conflictType}
-            onChange={(e) => { setConflictType(e.target.value); setPage(1) }}
+          <select value={conflictType} onChange={(e) => { setConflictType(e.target.value); setPage(1) }}
             className="rounded-2xl px-4 text-sm outline-none"
-            style={{
-              height: 42,
-              border: '2px solid #E2E6EF',
-              background: '#FFFFFF',
-              color: '#1A2338',
-            }}
-          >
-            {CONFLICT_TYPES.map((ct) => (
-              <option key={ct.value} value={ct.value}>{ct.label}</option>
-            ))}
+            style={{ height: 42, border: '2px solid #E2E6EF', background: '#FFFFFF', color: '#1A2338' }}>
+            {CONFLICT_TYPES.map((ct) => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
           </select>
         </div>
 
-        {/* Estados */}
-        {loading && (
-          <div className="text-center py-12" style={{ color: '#8E97AE' }}>Cargando…</div>
-        )}
-
-        {error && (
-          <div className="rounded-2xl p-4 text-sm font-semibold" style={{ background: '#FDECEA', color: '#C0271E' }}>
-            {error}
-          </div>
-        )}
+        {loading && <div className="text-center py-12" style={{ color: '#8E97AE' }}>Cargando…</div>}
+        {error && <div className="rounded-2xl p-4 text-sm font-semibold" style={{ background: '#FDECEA', color: '#C0271E' }}>{error}</div>}
 
         {!loading && !error && data && data.items.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -100,10 +87,9 @@ export default function ConflictLogPage() {
 
         {!loading && !error && data && data.items.length > 0 && (
           <>
-            <div
-              className="rounded-2xl overflow-hidden mb-4"
-              style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}
-            >
+            {/* Tabla — md+ */}
+            <div className="hidden md:block rounded-2xl overflow-hidden mb-4"
+              style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
               <table className="min-w-full text-sm">
                 <thead style={{ background: '#F8F9FC', borderBottom: '1px solid #E2E6EF' }}>
                   <tr>
@@ -115,71 +101,47 @@ export default function ConflictLogPage() {
                 </thead>
                 <tbody>
                   {data.items.map((entry: ConflictLogEntry, i: number) => (
-                    <tr
-                      key={entry.id}
-                      style={{ borderTop: i > 0 ? '1px solid #E2E6EF' : 'none' }}
-                    >
-                      <td className="px-5 py-3 whitespace-nowrap" style={{ color: '#4A5568' }}>
-                        {formatDate(entry.attempted_at)}
-                      </td>
+                    <tr key={entry.id} style={{ borderTop: i > 0 ? '1px solid #E2E6EF' : 'none' }}>
+                      <td className="px-5 py-3 whitespace-nowrap" style={{ color: '#4A5568' }}>{formatDate(entry.attempted_at)}</td>
                       <td className="px-4 py-3" style={{ color: '#1A2338', fontWeight: 500 }}>
-                        {entry.catechist_name ?? (
-                          <span style={{ color: '#8E97AE', fontStyle: 'italic' }}>Desconocido</span>
-                        )}
+                        {entry.catechist_name ?? <span style={{ color: '#8E97AE', fontStyle: 'italic' }}>Desconocido</span>}
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold"
-                          style={
-                            entry.conflict_type === 'duplicate_day'
-                              ? { background: '#FDF5E0', color: '#C9942A' }
-                              : { background: '#FDECEA', color: '#C0271E' }
-                          }
-                        >
-                          {LABELS[entry.conflict_type] ?? entry.conflict_type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs break-all" style={{ color: '#8E97AE' }}>
-                        {entry.record_id}
-                      </td>
+                      <td className="px-4 py-3"><ConflictBadge type={entry.conflict_type} /></td>
+                      <td className="px-4 py-3 font-mono text-xs break-all" style={{ color: '#8E97AE' }}>{entry.record_id}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Paginación */}
+            {/* Tarjetas — mobile */}
+            <div className="md:hidden space-y-3 mb-4">
+              {data.items.map((entry: ConflictLogEntry) => (
+                <div key={entry.id} className="rounded-2xl p-4"
+                  style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="text-sm font-semibold" style={{ color: '#1A2338' }}>
+                      {entry.catechist_name ?? <span style={{ color: '#8E97AE', fontStyle: 'italic' }}>Desconocido</span>}
+                    </p>
+                    <ConflictBadge type={entry.conflict_type} />
+                  </div>
+                  <p className="text-xs mb-1" style={{ color: '#4A5568' }}>{formatDate(entry.attempted_at)}</p>
+                  <p className="font-mono text-xs break-all" style={{ color: '#8E97AE' }}>{entry.record_id}</p>
+                </div>
+              ))}
+            </div>
+
             {totalPages > 1 && (
               <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
                   className="px-4 text-sm font-bold rounded-2xl"
-                  style={{
-                    height: 40,
-                    border: '2px solid #E2E6EF',
-                    background: '#FFFFFF',
-                    color: '#4A5568',
-                    opacity: page === 1 ? 0.4 : 1,
-                  }}
-                >
+                  style={{ height: 40, border: '2px solid #E2E6EF', background: '#FFFFFF', color: '#4A5568', opacity: page === 1 ? 0.4 : 1 }}>
                   Anterior
                 </button>
-                <span className="text-sm font-semibold" style={{ color: '#8E97AE' }}>
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
+                <span className="text-sm font-semibold" style={{ color: '#8E97AE' }}>{page} / {totalPages}</span>
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                   className="px-4 text-sm font-bold rounded-2xl"
-                  style={{
-                    height: 40,
-                    border: '2px solid #E2E6EF',
-                    background: '#FFFFFF',
-                    color: '#4A5568',
-                    opacity: page === totalPages ? 0.4 : 1,
-                  }}
-                >
+                  style={{ height: 40, border: '2px solid #E2E6EF', background: '#FFFFFF', color: '#4A5568', opacity: page === totalPages ? 0.4 : 1 }}>
                   Siguiente
                 </button>
               </div>
