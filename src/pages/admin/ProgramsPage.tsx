@@ -106,11 +106,7 @@ export default function ProgramsPage() {
       await downloadQrLabels(p.id, p.name)
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 400) {
-        alert('Este programa no tiene alumnos activos')
-      } else {
-        alert('Error al descargar el PDF')
-      }
+      alert(status === 400 ? 'Este programa no tiene alumnos activos' : 'Error al descargar el PDF')
     } finally {
       setDownloadingPdf(null)
     }
@@ -118,22 +114,14 @@ export default function ProgramsPage() {
 
   const handleDeactivate = async (p: Program) => {
     if (!window.confirm(`¿Desactivar el programa "${p.name}"?`)) return
-    try {
-      await deactivateProgram(p.id)
-      load()
-    } catch {
-      alert('Error al desactivar el programa')
-    }
+    try { await deactivateProgram(p.id); load() }
+    catch { alert('Error al desactivar el programa') }
   }
 
   const handleReactivate = async (p: Program) => {
     if (!window.confirm(`¿Reactivar el programa "${p.name}"?`)) return
-    try {
-      await updateProgram(p.id, { is_active: true })
-      load()
-    } catch {
-      alert('Error al reactivar el programa')
-    }
+    try { await updateProgram(p.id, { is_active: true }); load() }
+    catch { alert('Error al reactivar el programa') }
   }
 
   const fS = { border: '2px solid #E2E6EF', background: '#F8F9FC', color: '#1A2338' }
@@ -163,7 +151,9 @@ export default function ProgramsPage() {
         {!loading && !error && programs.length > 0 && (
           <>
             <p className="text-xs font-bold mb-3" style={{ color: '#8E97AE' }}>{total} programa{total !== 1 ? 's' : ''}</p>
-            <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
+
+            {/* Tabla — md+ */}
+            <div className="hidden md:block rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
               <table className="min-w-full text-sm">
                 <thead style={{ background: '#F8F9FC', borderBottom: '1px solid #E2E6EF' }}>
                   <tr>
@@ -219,6 +209,53 @@ export default function ProgramsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Tarjetas — mobile */}
+            <div className="md:hidden space-y-3">
+              {programs.map((p) => (
+                <div key={p.id} className="rounded-2xl p-4" style={{ background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #E2E6EF' }}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-bold text-base" style={{ color: '#1A2338' }}>{p.name}</p>
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold shrink-0"
+                      style={p.is_active ? { background: '#E8EEF8', color: '#1A3A6B' } : { background: '#F1F3F8', color: '#8E97AE' }}>
+                      {p.is_active ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-sm" style={{ color: '#4A5568' }}>
+                    <span>{TYPE_LABELS[p.type as ProgramType] ?? p.type}</span>
+                    <span>Año {p.academic_year}</span>
+                    <span>{p.required_signatures} firmas</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => openEdit(p)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                      style={{ background: '#E8EEF8', color: '#2452A0', border: 'none' }}>
+                      Editar
+                    </button>
+                    {p.is_active && (
+                      <button onClick={() => handleDownloadPdf(p)} disabled={downloadingPdf === p.id}
+                        className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                        style={{ background: '#FDF5E0', color: '#C9942A', border: 'none', opacity: downloadingPdf === p.id ? 0.5 : 1 }}>
+                        {downloadingPdf === p.id ? 'Descargando…' : 'PDF QR'}
+                      </button>
+                    )}
+                    {p.is_active ? (
+                      <button onClick={() => handleDeactivate(p)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                        style={{ background: '#FDECEA', color: '#C0271E', border: 'none' }}>
+                        Desactivar
+                      </button>
+                    ) : (
+                      <button onClick={() => handleReactivate(p)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                        style={{ background: '#E8F5E9', color: '#2E7D32', border: 'none' }}>
+                        Reactivar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}

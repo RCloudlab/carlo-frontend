@@ -43,10 +43,12 @@ export default function StudentsPage() {
   const [formError, setFormError] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [selectingAll, setSelectingAll] = useState(false)   // cargando todos los IDs
+  const [allListedSelected, setAllListedSelected] = useState(false) // todos los del filtro seleccionados
   const [downloadingBatch, setDownloadingBatch] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const allSelected = students.length > 0 && students.every((s) => selected.has(s.id))
+  const allPageSelected = students.length > 0 && students.every((s) => selected.has(s.id))
 
   const load = (p = page) => {
     setLoading(true)
@@ -70,15 +72,18 @@ export default function StudentsPage() {
   useEffect(() => {
     setPage(1)
     setSelected(new Set())
+    setAllListedSelected(false)
     load(1)
   }, [filterProgram, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setSelected(new Set())
+    setAllListedSelected(false)
     load(page)
   }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSelect = (id: string) => {
+    setAllListedSelected(false)
     setSelected((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -86,8 +91,37 @@ export default function StudentsPage() {
     })
   }
 
-  const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(students.map((s) => s.id)))
+  const togglePageAll = () => {
+    if (allPageSelected) {
+      setSelected(new Set())
+      setAllListedSelected(false)
+    } else {
+      setSelected(new Set(students.map((s) => s.id)))
+    }
+  }
+
+  const selectAllListed = async () => {
+    setSelectingAll(true)
+    try {
+      const res = await listStudents({
+        program_id: filterProgram || undefined,
+        search: search || undefined,
+        active_only: true,
+        page: 1,
+        page_size: 200, // límite del backend
+      })
+      setSelected(new Set(res.items.map((s) => s.id)))
+      setAllListedSelected(true)
+    } catch {
+      alert('Error al seleccionar todos los alumnos')
+    } finally {
+      setSelectingAll(false)
+    }
+  }
+
+  const clearSelection = () => {
+    setSelected(new Set())
+    setAllListedSelected(false)
   }
 
   const openCreate = () => {
@@ -207,25 +241,43 @@ export default function StudentsPage() {
 
         {/* Barra de acciones de selección */}
         {selected.size > 0 && (
-          <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl" style={{ background: '#E8EEF8', border: '1px solid #C5D3EA' }}>
-            <span className="text-sm font-bold" style={{ color: '#1A3A6B' }}>
-              {selected.size} alumno{selected.size !== 1 ? 's' : ''} seleccionado{selected.size !== 1 ? 's' : ''}
-            </span>
-            <button
-              onClick={handleDownloadBatch}
-              disabled={downloadingBatch}
-              className="text-sm font-bold px-4 py-1.5 rounded-xl text-white"
-              style={{ background: 'linear-gradient(135deg, #C9942A, #E0A830)', border: 'none', opacity: downloadingBatch ? 0.6 : 1 }}
-            >
-              {downloadingBatch ? 'Descargando…' : `Descargar QR${selected.size > 1 ? 's' : ''}`}
-            </button>
-            <button
-              onClick={() => setSelected(new Set())}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl"
-              style={{ background: '#FFFFFF', color: '#8E97AE', border: '1px solid #E2E6EF' }}
-            >
-              Limpiar
-            </button>
+          <div className="mb-4 rounded-2xl overflow-hidden" style={{ border: '1px solid #C5D3EA' }}>
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3" style={{ background: '#E8EEF8' }}>
+              <span className="text-sm font-bold" style={{ color: '#1A3A6B' }}>
+                {allListedSelected
+                  ? `Todos los ${selected.size} alumnos seleccionados`
+                  : `${selected.size} alumno${selected.size !== 1 ? 's' : ''} seleccionado${selected.size !== 1 ? 's' : ''}`}
+              </span>
+              <button
+                onClick={handleDownloadBatch}
+                disabled={downloadingBatch}
+                className="text-sm font-bold px-4 py-1.5 rounded-xl text-white"
+                style={{ background: 'linear-gradient(135deg, #C9942A, #E0A830)', border: 'none', opacity: downloadingBatch ? 0.6 : 1 }}
+              >
+                {downloadingBatch ? 'Descargando…' : `Descargar QR${selected.size > 1 ? 's' : ''}`}
+              </button>
+              <button
+                onClick={clearSelection}
+                className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                style={{ background: '#FFFFFF', color: '#8E97AE', border: '1px solid #E2E6EF' }}
+              >
+                Limpiar
+              </button>
+            </div>
+            {/* Banner "seleccionar todos" — aparece solo cuando la página está completa y hay más páginas */}
+            {allPageSelected && !allListedSelected && total > PAGE_SIZE && (
+              <div className="px-4 py-2.5 text-sm text-center" style={{ background: '#D6E4F7', borderTop: '1px solid #C5D3EA' }}>
+                <span style={{ color: '#1A3A6B' }}>Solo están seleccionados los {students.length} de esta página. </span>
+                <button
+                  onClick={selectAllListed}
+                  disabled={selectingAll}
+                  className="font-bold underline"
+                  style={{ color: '#1A3A6B', background: 'none', border: 'none', cursor: 'pointer', opacity: selectingAll ? 0.6 : 1 }}
+                >
+                  {selectingAll ? 'Cargando…' : `Seleccionar los ${total} alumnos`}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -247,7 +299,7 @@ export default function StudentsPage() {
                 <thead style={{ background: '#F8F9FC', borderBottom: '1px solid #E2E6EF' }}>
                   <tr>
                     <th className="px-4 py-3 w-10">
-                      <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                      <input type="checkbox" checked={allPageSelected} onChange={togglePageAll}
                         className="w-4 h-4 rounded cursor-pointer" style={{ accentColor: '#2452A0' }} />
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-bold uppercase" style={{ color: '#8E97AE', letterSpacing: '0.06em' }}>Nombre</th>
