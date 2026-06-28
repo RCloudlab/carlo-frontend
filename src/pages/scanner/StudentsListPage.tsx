@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSessionStore } from '../../store/session.store'
-import { getStudentsInSession, type StudentInSession } from '../../services/session.service'
+import { getStudentsInSession, getPrograms, type StudentInSession } from '../../services/session.service'
+import { listStudents } from '../../services/students.service'
 
 export default function StudentsListPage() {
   const navigate = useNavigate()
@@ -10,17 +11,34 @@ export default function StudentsListPage() {
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [programName, setProgramName] = useState<string>('')
 
   useEffect(() => {
-    if (!activeSession) {
-      navigate('/scan', { replace: true })
-      return
-    }
     async function load() {
       setIsLoading(true)
+      setError(null)
       try {
-        const data = await getStudentsInSession(activeSession!.id)
-        setStudents(data)
+        if (activeSession) {
+          // Sesión activa: mostrar alumnos con estado de asistencia
+          const data = await getStudentsInSession(activeSession.id)
+          setStudents(data)
+        } else {
+          // Sin sesión: cargar alumnos del primer programa activo
+          const programs = await getPrograms()
+          if (programs.length === 0) {
+            setStudents([])
+            return
+          }
+          const program = programs[0]
+          setProgramName(program.name)
+          const result = await listStudents({ program_id: program.id, active_only: true, page_size: 200 })
+          setStudents(result.items.map((s) => ({
+            id: s.id,
+            full_name: s.full_name,
+            is_present: false,
+            attendance_id: null,
+          })))
+        }
       } catch {
         setError('No se pudo cargar la lista de alumnos')
       } finally {
@@ -28,7 +46,7 @@ export default function StudentsListPage() {
       }
     }
     load()
-  }, [activeSession, navigate])
+  }, [activeSession])
 
   const filtered = useMemo(() => {
     if (!query.trim()) return students
@@ -45,6 +63,10 @@ export default function StudentsListPage() {
       </div>
     )
   }
+
+  const subtitle = activeSession
+    ? `Sesión del ${activeSession.session_date}`
+    : programName || 'Sin sesión activa'
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#F8F9FC', maxWidth: 480, margin: '0 auto' }}>
@@ -69,18 +91,16 @@ export default function StudentsListPage() {
             <h1 className="text-lg font-extrabold" style={{ color: '#1A2338', letterSpacing: '-0.01em' }}>
               Alumnos
             </h1>
-            {activeSession && (
-              <p className="text-xs" style={{ color: '#8E97AE' }}>
-                Sesión del {activeSession.session_date}
-              </p>
-            )}
+            <p className="text-xs" style={{ color: '#8E97AE' }}>{subtitle}</p>
           </div>
-          <span
-            className="text-xs font-bold px-3 py-1 rounded-full"
-            style={{ background: '#E8EEF8', color: '#1A3A6B' }}
-          >
-            {presentCount}/{students.length}
-          </span>
+          {activeSession && (
+            <span
+              className="text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: '#E8EEF8', color: '#1A3A6B' }}
+            >
+              {presentCount}/{students.length}
+            </span>
+          )}
         </div>
 
         {/* Buscador */}
@@ -123,75 +143,59 @@ export default function StudentsListPage() {
         </div>
       )}
 
-      {!activeSession && !isLoading && (
-        <div className="mx-4 mt-6 p-5 rounded-2xl text-center"
-          style={{ background: '#FFFFFF', border: '1px solid #E2E6EF' }}>
-          <p className="text-sm font-semibold mb-3" style={{ color: '#4A5568' }}>
-            No hay una sesión activa
-          </p>
-          <button
-            onClick={() => navigate('/scan')}
-            className="text-sm font-bold px-5 py-2 rounded-xl"
-            style={{ background: '#E8EEF8', color: '#1A3A6B' }}
-          >
-            Ir al inicio
-          </button>
-        </div>
-      )}
-
       {/* Lista */}
-      {students.length > 0 && (
-        <ul className="flex-1 bg-white mt-2" style={{ borderTop: '1px solid #E2E6EF', borderBottom: '1px solid #E2E6EF' }}>
-          {filtered.length === 0 && (
-            <li className="p-6 text-center text-sm" style={{ color: '#8E97AE' }}>Sin resultados</li>
-          )}
+      <ul className="flex-1 bg-white mt-2 mb-16" style={{ borderTop: '1px solid #E2E6EF', borderBottom: '1px solid #E2E6EF' }}>
+        {filtered.length === 0 && !error && (
+          <li className="p-6 text-center text-sm" style={{ color: '#8E97AE' }}>Sin resultados</li>
+        )}
 
-          {filtered.map((student, idx) => {
-            const initials = student.full_name
-              .split(' ')
-              .slice(0, 2)
-              .map((n) => n[0])
-              .join('')
+        {filtered.map((student, idx) => {
+          const initials = student.full_name
+            .split(' ')
+            .slice(0, 2)
+            .map((n) => n[0])
+            .join('')
 
-            return (
-              <li
-                key={student.id}
-                className="flex items-center gap-3 px-4"
+          return (
+            <li
+              key={student.id}
+              className="flex items-center gap-3 px-4"
+              style={{
+                minHeight: 60,
+                borderBottom: idx < filtered.length - 1 ? '1px solid #E2E6EF' : 'none',
+                background: student.is_present ? 'rgba(26,58,107,0.03)' : '#FFFFFF',
+              }}
+            >
+              {/* Avatar */}
+              <div
+                className="flex items-center justify-center rounded-full text-sm font-extrabold shrink-0"
                 style={{
-                  minHeight: 60,
-                  borderBottom: idx < filtered.length - 1 ? '1px solid #E2E6EF' : 'none',
-                  background: student.is_present ? 'rgba(26,58,107,0.03)' : '#FFFFFF',
+                  width: 40,
+                  height: 40,
+                  background: student.is_present
+                    ? 'linear-gradient(135deg, #1A3A6B, #2452A0)'
+                    : 'linear-gradient(135deg, #E8EEF8, #F1F3F8)',
+                  color: student.is_present ? '#FFFFFF' : '#8E97AE',
                 }}
               >
-                {/* Avatar */}
-                <div
-                  className="flex items-center justify-center rounded-full text-sm font-extrabold shrink-0"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    background: student.is_present
-                      ? 'linear-gradient(135deg, #1A3A6B, #2452A0)'
-                      : 'linear-gradient(135deg, #E8EEF8, #F1F3F8)',
-                    color: student.is_present ? '#FFFFFF' : '#8E97AE',
-                  }}
-                >
-                  {student.is_present ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : initials}
-                </div>
-
-                {/* Nombre */}
-                <span
-                  className="flex-1 text-sm font-semibold"
-                  style={{ color: student.is_present ? '#1A3A6B' : '#1A2338' }}
-                >
-                  {student.full_name}
-                </span>
-
-                {/* Badge */}
                 {student.is_present ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : initials}
+              </div>
+
+              {/* Nombre */}
+              <span
+                className="flex-1 text-sm font-semibold"
+                style={{ color: student.is_present ? '#1A3A6B' : '#1A2338' }}
+              >
+                {student.full_name}
+              </span>
+
+              {/* Badge — solo cuando hay sesión activa */}
+              {activeSession && (
+                student.is_present ? (
                   <span
                     className="text-xs font-bold px-3 py-1 rounded-full"
                     style={{ background: '#E8EEF8', color: '#1A3A6B' }}
@@ -205,20 +209,22 @@ export default function StudentsListPage() {
                   >
                     Pendiente
                   </span>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                )
+              )}
+            </li>
+          )
+        })}
+      </ul>
 
       {/* Pie */}
-      <div
-        className="p-4 text-center text-xs font-medium"
-        style={{ background: '#FFFFFF', color: '#8E97AE', borderTop: '1px solid #E2E6EF' }}
-      >
-        {presentCount} de {students.length} presentes
-      </div>
+      {activeSession && (
+        <div
+          className="p-4 text-center text-xs font-medium fixed bottom-12 left-0 right-0"
+          style={{ background: '#FFFFFF', color: '#8E97AE', borderTop: '1px solid #E2E6EF' }}
+        >
+          {presentCount} de {students.length} presentes
+        </div>
+      )}
 
       {/* Bottom nav */}
       <nav
