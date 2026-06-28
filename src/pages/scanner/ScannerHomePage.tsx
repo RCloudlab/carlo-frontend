@@ -45,11 +45,10 @@ export default function ScannerHomePage() {
     }
   }
 
-  async function handleCreateSession(dateOverride?: string) {
+  async function handleCreateSession(date: string) {
     if (creating) return
     setCreating(true)
     setError(null)
-    const date = dateOverride ?? sessionDate
     try {
       const session = await createSession({
         id: uuidv4(),
@@ -179,7 +178,7 @@ export default function ScannerHomePage() {
           ) : (
             <div className="flex flex-col gap-2 relative z-10">
               <button
-                onClick={() => handleCreateSession()}
+                onClick={() => handleCreateSession(sessionDate)}
                 disabled={creating}
                 className="flex items-center gap-2 px-5 font-extrabold text-white rounded-2xl"
                 style={{
@@ -322,7 +321,7 @@ export default function ScannerHomePage() {
             </div>
 
             <button
-              onClick={handleCreateSession}
+              onClick={() => handleCreateSession(sessionDate)}
               disabled={creating}
               className="w-full font-extrabold text-white rounded-2xl"
               style={{
