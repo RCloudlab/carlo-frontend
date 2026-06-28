@@ -7,6 +7,7 @@ import ScannerHomePage from './pages/scanner/ScannerHomePage'
 import NewSessionPage from './pages/scanner/NewSessionPage'
 import QrScannerPage from './pages/scanner/QrScannerPage'
 import ManualListPage from './pages/scanner/ManualListPage'
+import StudentsListPage from './pages/scanner/StudentsListPage'
 import AdminPage from './pages/admin/AdminPage'
 import ConflictLogPage from './pages/admin/ConflictLogPage'
 import ProgramsPage from './pages/admin/ProgramsPage'
@@ -80,6 +81,14 @@ function AppInner() {
           element={
             <ProtectedRoute requiredRole="catequista">
               <ManualListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <ProtectedRoute requiredRole="catequista">
+              <StudentsListPage />
             </ProtectedRoute>
           }
         />

@@ -45,14 +45,15 @@ export default function ScannerHomePage() {
     }
   }
 
-  async function handleCreateSession() {
+  async function handleCreateSession(dateOverride?: string) {
     if (creating) return
     setCreating(true)
     setError(null)
+    const date = dateOverride ?? sessionDate
     try {
       const session = await createSession({
         id: uuidv4(),
-        session_date: sessionDate,
+        session_date: date,
         started_at: new Date().toISOString(),
       })
       setActiveSession(session)
@@ -176,18 +177,29 @@ export default function ScannerHomePage() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setShowSheet(true)}
-              className="flex items-center gap-2 px-5 font-extrabold text-white rounded-2xl relative z-10"
-              style={{
-                height: 50,
-                background: 'linear-gradient(135deg, #C9942A, #E8B84B)',
-                boxShadow: '0 4px 16px rgba(201,148,42,0.40)',
-                fontSize: 15,
-              }}
-            >
-              <PlusIcon /> Nueva sesión
-            </button>
+            <div className="flex flex-col gap-2 relative z-10">
+              <button
+                onClick={() => handleCreateSession()}
+                disabled={creating}
+                className="flex items-center gap-2 px-5 font-extrabold text-white rounded-2xl"
+                style={{
+                  height: 50,
+                  background: 'linear-gradient(135deg, #C9942A, #E8B84B)',
+                  boxShadow: '0 4px 16px rgba(201,148,42,0.40)',
+                  fontSize: 15,
+                  opacity: creating ? 0.65 : 1,
+                }}
+              >
+                <PlusIcon /> {creating ? 'Abriendo…' : 'Abrir sesión de hoy'}
+              </button>
+              <button
+                onClick={() => setShowSheet(true)}
+                className="text-xs font-semibold underline text-center"
+                style={{ color: 'rgba(255,255,255,0.55)', background: 'transparent', border: 'none' }}
+              >
+                Usar otra fecha
+              </button>
+            </div>
           )}
         </div>
 
